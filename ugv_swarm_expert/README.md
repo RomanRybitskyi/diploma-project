@@ -110,3 +110,19 @@ ros2 run ugv_swarm_expert feature_engineer \
 ```
 
 The module uses hardware-based min-max normalization, symmetric mirroring augmentation, and 4-step padded sliding windows.
+
+## Discriminator Network
+
+`ugv_swarm_expert.discriminator_network.DiscriminatorNetwork` implements the centralized MA-GAIL discriminator used during CTDE training.
+
+```python
+import torch
+from ugv_swarm_expert.discriminator_network import DiscriminatorNetwork
+
+discriminator = DiscriminatorNetwork()
+joint_state_action = torch.rand(32, 3, 43)  # Batch, agents, state+action
+prob_expert = discriminator(joint_state_action)
+assert tuple(prob_expert.shape) == (32, 1)
+```
+
+The network uses shared local agent encoding, batch-first multi-head self-attention, global max pooling over agents, and a sigmoid evaluator.

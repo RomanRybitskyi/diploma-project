@@ -78,9 +78,10 @@ class UGVSwarmEnv:
         self._closed = False
         self._owns_rclpy = False
 
+        state_device = device if device is not None else "cpu"
         self._target_offsets = self._build_target_offsets(target_offsets or {})
         self._state_processors = {
-            agent: StateProcessor(target_offset=self._target_offsets[agent], device=device)
+            agent: StateProcessor(target_offset=self._target_offsets[agent], device=state_device)
             for agent in self.agent_names
         }
 

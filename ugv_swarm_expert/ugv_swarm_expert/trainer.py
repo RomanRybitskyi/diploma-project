@@ -107,7 +107,7 @@ class MAGAILTrainer:
 
         self.actor.train()
         self.critic.train()
-        metrics = {
+        accumulated = {
             "actor_loss": 0.0,
             "critic_loss": 0.0,
             "entropy": 0.0,
@@ -146,16 +146,21 @@ class MAGAILTrainer:
 
                 with torch.no_grad():
                     approx_kl = (old_log_probs - new_log_probs).mean()
-                metrics = {
-                    "actor_loss": float(actor_loss.detach().cpu()),
-                    "critic_loss": float(critic_loss.detach().cpu()),
-                    "entropy": float(entropy.detach().cpu()),
-                    "approx_kl": float(approx_kl.detach().cpu()),
-                }
+
+                accumulated["actor_loss"] += float(actor_loss.detach().cpu())
+                accumulated["critic_loss"] += float(critic_loss.detach().cpu())
+                accumulated["entropy"] += float(entropy.detach().cpu())
+                accumulated["approx_kl"] += float(approx_kl.detach().cpu())
                 update_count += 1
 
-        metrics["num_updates"] = float(update_count)
-        return metrics
+        n = max(update_count, 1)
+        return {
+            "actor_loss": accumulated["actor_loss"] / n,
+            "critic_loss": accumulated["critic_loss"] / n,
+            "entropy": accumulated["entropy"] / n,
+            "approx_kl": accumulated["approx_kl"] / n,
+            "num_updates": float(update_count),
+        }
 
     def _critic_values(self, states: torch.Tensor) -> torch.Tensor:
         values = self.critic(states)

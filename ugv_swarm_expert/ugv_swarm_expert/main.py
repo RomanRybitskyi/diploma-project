@@ -53,7 +53,7 @@ class CriticNetwork(nn.Module):
 
 class ExpertTensorDataset(Dataset):
     def __init__(self, path, device="cpu"):
-        payload = torch.load(Path(path).expanduser(), map_location=device)
+        payload = torch.load(Path(path).expanduser(), map_location=device, weights_only=True)
         if "states" not in payload or "actions" not in payload:
             raise KeyError("Expert tensor file must contain 'states' and 'actions'.")
         self.states = torch.as_tensor(payload["states"], dtype=torch.float32, device=device)

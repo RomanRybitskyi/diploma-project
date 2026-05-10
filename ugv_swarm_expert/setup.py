@@ -22,6 +22,7 @@ setup(
             "expert_data_collector = ugv_swarm_expert.expert_data_collector:main",
             "dataset_preprocessor = ugv_swarm_expert.dataset_preprocessor:main",
             "feature_engineer = ugv_swarm_expert.feature_engineer:main",
+            "inference_node = ugv_swarm_expert.inference_node:main",
         ],
     },
 )

@@ -144,6 +144,21 @@ env.close()
 
 The wrapper publishes `/ugv_i/cmd_vel`, subscribes to `/ugv_i/odom` and `/ugv_i/scan`, un-normalizes actor outputs to TurtleBot limits, enforces a 10 Hz control period, and uses `/reset_simulation` for episode resets.
 
+## Decentralized Inference Node
+
+`ugv_swarm_expert.inference_node.UGVInferenceNode` runs the trained Actor policy on one follower robot. It subscribes to local odometry/LiDAR plus `/leader/odom`, keeps a 4-step normalized state window, uses the deterministic policy mean under `torch.no_grad()`, and publishes `/{robot_namespace}/cmd_vel` at 10 Hz.
+
+```bash
+ros2 run ugv_swarm_expert inference_node \
+  --ros-args \
+  -p robot_namespace:=ugv_1 \
+  -p leader_name:=leader \
+  -p target_offset:="-0.7,0.0" \
+  -p model_path:=/path/to/checkpoints/actor_ep500.pth
+```
+
+Run one instance per follower with a different `robot_namespace` and formation `target_offset`.
+
 ## PPO Rollout Buffer
 
 `ugv_swarm_expert.rollout_buffer.PPORolloutBuffer` stores vectorized multi-agent PPO trajectories before an update.

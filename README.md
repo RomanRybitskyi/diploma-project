@@ -47,23 +47,13 @@
 
 ```bash
 ros2 launch ugv_swarm_expert empty_world.launch.py
-```
-
-або у світі з конусами:
-
-```bash
-ros2 launch ugv_swarm_expert cones_world.launch.py
+# або: ros2 launch ugv_swarm_expert cones_world.launch.py
 ```
 
 Потім запустіть вузол збору даних:
 
 ```bash
-ros2 run ugv_swarm_expert expert_data_collector \
-  --ros-args \
-  -p leader_name:=leader \
-  -p follower_names:="['tb3_1', 'tb3_2']" \
-  -p formation_distance:=0.7 \
-  -p output_dir:=~/ugv_swarm_expert_data
+ros2 run ugv_swarm_expert expert_data_collector --ros-args
 ```
 
 Основні параметри вузла:
@@ -91,10 +81,8 @@ time_step,pos_x,pos_y,yaw,rel_dist_lead,rel_ang_lead,lidar_s1,...,lidar_s36,targ
 
 ```bash
 ros2 run ugv_swarm_expert dataset_preprocessor \
-  --agent-csv leader=/path/to/leader_raw.csv \
-  --agent-csv tb3_1=/path/to/tb3_1_raw.csv \
-  --agent-csv tb3_2=/path/to/tb3_2_raw.csv \
-  --output /path/to/clean_swarm_dataset.csv
+  --agent-csv <agent>=<path_to_raw.csv> [...] \
+  --output <path_to_clean_dataset.csv>
 ```
 
 Що виконує препроцесор:
@@ -113,12 +101,11 @@ ros2 run ugv_swarm_expert dataset_preprocessor \
 
 ```bash
 ros2 run ugv_swarm_expert feature_engineer \
-  --input /path/to/clean_swarm_dataset.csv \
-  --output /path/to/actor_training_tensors.pt \
-  --leader leader \
-  --followers tb3_1 tb3_2 \
-  --target-offset tb3_1=-0.7,0.0 \
-  --target-offset tb3_2=-1.4,0.0
+  --input <clean_dataset.csv> \
+  --output <tensors.pt> \
+  --leader <leader_name> \
+  --followers <follower1> <follower2> \
+  --target-offset <follower1>=<dx,dy> [...]
 ```
 
 Що виконує модуль:
@@ -183,28 +170,16 @@ source install/setup.zsh
 
 ```bash
 python ugv_swarm_expert/scripts/offline_train.py \
-  --expert-data datasets/expert_tensors.pt \
-  --num-agents 3 \
-  --num-steps 2048 \
-  --max-epochs 500 \
-  --batch-size 128 \
-  --expert-batch-size 256 \
-  --checkpoint-every 50 \
-  --checkpoint-dir checkpoints \
-  --log-dir runs/ma_gail \
-  --actor-lr 3e-4
+  --expert-data <tensors.pt> \
+  --checkpoint-dir <checkpoints_dir>
 ```
 
 або через ROS 2:
 
 ```bash
 ros2 run ugv_swarm_expert ma_gail_train \
-  --expert-data /path/to/actor_training_tensors.pt \
-  --num-agents 3 \
-  --num-steps 2048 \
-  --max-epochs 500 \
-  --checkpoint-dir checkpoints \
-  --log-dir runs/ma_gail
+  --expert-data <tensors.pt> \
+  --checkpoint-dir <checkpoints_dir>
 ```
 
 ### Принцип роботи навчання
@@ -235,20 +210,12 @@ r(s, a) = -log(1 - D(s, a))
 
 ## 6. Запуск симуляції в Gazebo
 
-### Порожній світ
-
 ```bash
-ros2 launch ugv_swarm_expert empty_world.launch.py \
-  use_gui:=true \
-  use_sim_time:=true
-```
+# Порожній світ
+ros2 launch ugv_swarm_expert empty_world.launch.py
 
-### Світ з конусами (перешкоди)
-
-```bash
-ros2 launch ugv_swarm_expert cones_world.launch.py \
-  use_gui:=true \
-  use_sim_time:=true
+# Світ з конусами (перешкоди)
+ros2 launch ugv_swarm_expert cones_world.launch.py
 ```
 
 ### Параметри запуску симуляції
@@ -269,29 +236,13 @@ ros2 launch ugv_swarm_expert cones_world.launch.py \
 
 ```bash
 ros2 run ugv_swarm_expert inference_node \
-  --ros-args \
-  -p robot_namespace:=tb3_1 \
-  -p leader_name:=leader \
-  -p target_offset:="-0.7,0.0" \
-  -p model_path:=/path/to/checkpoints/actor_epfinal.pth
+  --ros-args -p robot_namespace:=<name> -p model_path:=<path/to/actor.pth> [параметри]
 ```
 
-Для рою з двох фолловерів запустіть два окремі екземпляри у різних терміналах:
+Для запуску повного рою використовуйте launch-файл:
 
 ```bash
-# Термінал 1
-ros2 run ugv_swarm_expert inference_node \
-  --ros-args \
-  -p robot_namespace:=tb3_1 \
-  -p target_offset:="-0.7,0.0" \
-  -p model_path:=/path/to/checkpoints/actor_epfinal.pth
-
-# Термінал 2
-ros2 run ugv_swarm_expert inference_node \
-  --ros-args \
-  -p robot_namespace:=tb3_2 \
-  -p target_offset:="-1.4,0.0" \
-  -p model_path:=/path/to/checkpoints/actor_epfinal.pth
+ros2 launch ugv_swarm_expert swarm_inference.launch.py
 ```
 
 Навігація лідера запускається окремо:
@@ -308,11 +259,7 @@ ros2 launch ugv_swarm_expert leader_navigation.launch.py
 
 ```bash
 ros2 run ugv_swarm_expert eval_metrics \
-  --actor /path/to/checkpoints/actor_epfinal.pth \
-  --num-agents 3 \
-  --episodes 10 \
-  --max-steps 500 \
-  --output results/eval_results.json
+  --actor <path/to/actor.pth> [параметри]
 ```
 
 Метрики:
@@ -367,7 +314,7 @@ source install/setup.zsh
 ### Python-залежності
 
 ```bash
-pip install torch numpy pandas
+pip install -r requirements.txt
 ```
 
 ---
@@ -399,4 +346,5 @@ ugv_swarm_expert/
     datasets/
         dataset.csv
         expert_tensors.pt
+    requirements.txt
 ```

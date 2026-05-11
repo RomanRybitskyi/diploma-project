@@ -69,7 +69,10 @@ class MetricsTracker:
         self._in_lost: bool = False
 
         self._obstacle_step: int | None = None
+        self._obstacle_ts: float | None = None
         self._recovery_step: int | None = None
+        self._recovery_ts: float | None = None
+        self._had_high_ef_since_obstacle: bool = False
 
     def update(self, step: StepData) -> None:
         idx = self._step_count
@@ -98,13 +101,20 @@ class MetricsTracker:
 
         if step.obstacle_detected and self._obstacle_step is None:
             self._obstacle_step = idx
+            self._obstacle_ts = step.timestamp
+
+        if self._obstacle_step is not None and ef >= self._rec_thr:
+            self._had_high_ef_since_obstacle = True
+
         if (
             self._obstacle_step is not None
             and self._recovery_step is None
+            and self._had_high_ef_since_obstacle
             and ef < self._rec_thr
             and idx > self._obstacle_step
         ):
             self._recovery_step = idx
+            self._recovery_ts = step.timestamp
 
     @property
     def mean_formation_error(self) -> float:
@@ -112,13 +122,14 @@ class MetricsTracker:
 
     @property
     def smoothness_factor(self) -> float:
-        return self._smoothness / max(self.num_followers, 1)
+        transitions = max(self._step_count - 1, 1)
+        return self._smoothness / (transitions * max(self.num_followers, 1))
 
     @property
     def recovery_time(self) -> float | None:
-        if self._obstacle_step is None or self._recovery_step is None:
+        if self._obstacle_ts is None or self._recovery_ts is None:
             return None
-        return (self._recovery_step - self._obstacle_step) * self.dt
+        return self._recovery_ts - self._obstacle_ts
 
     @property
     def success(self) -> bool:

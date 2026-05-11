@@ -43,3 +43,7 @@ FRONT_ARC_DEG: float = 30.0
 
 DEFAULT_ANOMALY_WINDOW_SEC: float = 0.5
 DEFAULT_MAX_INTERPOLATION_GAP_SEC: float = 0.2
+
+DEFAULT_LEADER_NAME: str = "leader"
+DEFAULT_FOLLOWER_NAMES: tuple[str, ...] = ("tb3_1", "tb3_2")
+DEFAULT_AGENT_NAMES: tuple[str, ...] = ("leader", "tb3_1", "tb3_2")

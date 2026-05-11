@@ -19,6 +19,8 @@ from torch.distributions import Distribution
 
 from ugv_swarm_expert.constants import (
     CONTROL_PERIOD_SEC,
+    DEFAULT_FOLLOWER_NAMES,
+    DEFAULT_LEADER_NAME,
     TB3_MAX_ANGULAR_RADPS,
     TB3_MAX_LINEAR_MPS,
 )
@@ -26,9 +28,8 @@ from ugv_swarm_expert.env.safety_supervisor import SafetySupervisor
 from ugv_swarm_expert.env.state_processor import StateProcessor
 from ugv_swarm_expert.models.actor_network import ActorNetwork
 
-DEFAULT_ROBOT_NAMESPACE = "ugv_1"
-DEFAULT_LEADER_NAME = "leader"
-DEFAULT_MODEL_PATH = "checkpoints/actor_ep500.pth"
+DEFAULT_ROBOT_NAMESPACE = DEFAULT_FOLLOWER_NAMES[0]
+DEFAULT_MODEL_PATH = "checkpoints/offline/actor_epfinal.pth"
 
 
 class UGVInferenceNode(Node):

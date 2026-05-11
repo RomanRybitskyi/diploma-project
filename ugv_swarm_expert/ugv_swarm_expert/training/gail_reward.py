@@ -5,9 +5,11 @@ from typing import Any
 import torch
 from torch import nn
 
-STATE_FEATURE_COUNT = 41
-ACTION_FEATURE_COUNT = 2
-DISCRIMINATOR_FEATURE_COUNT = STATE_FEATURE_COUNT + ACTION_FEATURE_COUNT
+from ugv_swarm_expert.constants import (
+    ACTION_DIM,
+    STATE_FEATURE_COUNT,
+)
+
 DEFAULT_REWARD_EPS = 1e-6
 
 
@@ -27,19 +29,22 @@ def compute_gail_reward(
     actions = actions.to(target_device)
     _validate_reward_inputs(states, actions)
 
+    batch_size, n_agents, _ = states.shape
+
     joint_state_action = torch.cat((states, actions), dim=2)
-    discriminator_output = discriminator(joint_state_action)
-    if discriminator_output.ndim == 1:
-        discriminator_output = discriminator_output.unsqueeze(1)
-    if discriminator_output.shape != (states.shape[0], 1):
+    disc_output = discriminator(joint_state_action)
+
+    if disc_output.ndim == 1 and disc_output.shape[0] == batch_size:
+        disc_output = disc_output.unsqueeze(-1)
+
+    if disc_output.shape != (batch_size, 1):
         raise ValueError(
-            "discriminator output must have shape (Batch, 1) or (Batch,); "
-            f"got {tuple(discriminator_output.shape)}."
+            f"Discriminator output must have shape ({batch_size}, 1); " f"got {tuple(disc_output.shape)}."
         )
 
-    probability = torch.clamp(discriminator_output, min=eps, max=1.0 - eps)
+    probability = torch.clamp(disc_output, min=eps, max=1.0 - eps)
     global_reward = -torch.log1p(-probability)
-    return global_reward.expand(-1, states.shape[1])
+    return global_reward.expand(batch_size, n_agents).contiguous()
 
 
 class GAILRewardComputer:
@@ -69,10 +74,8 @@ def _validate_reward_inputs(states: torch.Tensor, actions: torch.Tensor) -> None
         raise ValueError(
             f"states must have shape (Batch, N, {STATE_FEATURE_COUNT}); got {tuple(states.shape)}."
         )
-    if actions.ndim != 3 or actions.shape[-1] != ACTION_FEATURE_COUNT:
-        raise ValueError(
-            f"actions must have shape (Batch, N, {ACTION_FEATURE_COUNT}); got {tuple(actions.shape)}."
-        )
+    if actions.ndim != 3 or actions.shape[-1] != ACTION_DIM:
+        raise ValueError(f"actions must have shape (Batch, N, {ACTION_DIM}); got {tuple(actions.shape)}.")
     if states.shape[:2] != actions.shape[:2]:
         raise ValueError(
             "states and actions must have matching Batch and N dimensions; "

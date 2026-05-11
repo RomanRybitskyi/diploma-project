@@ -4,13 +4,16 @@ import torch
 from torch import nn
 from torch.distributions import Normal
 
-from ugv_swarm_expert.weight_initializer import init_ppo_action_head, orthogonal_init
+from ugv_swarm_expert.constants import (
+    ACTION_FEATURE_COUNT,
+    KINEMATIC_FEATURE_COUNT,
+    LIDAR_SECTOR_COUNT,
+    STATE_FEATURE_COUNT,
+    STATE_WINDOW_SIZE,
+)
+from ugv_swarm_expert.models.weight_initializer import init_ppo_action_head, orthogonal_init
 
-STATE_WINDOW_SIZE = 4
-STATE_FEATURE_COUNT = 41
-KINEMATIC_FEATURE_COUNT = 5
-LIDAR_FEATURE_COUNT = 36
-ACTION_FEATURE_COUNT = 2
+LIDAR_FEATURE_COUNT: int = LIDAR_SECTOR_COUNT
 
 
 class ActorNetwork(nn.Module):

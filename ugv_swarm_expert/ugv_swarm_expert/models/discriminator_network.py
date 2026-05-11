@@ -3,9 +3,10 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from ugv_swarm_expert.weight_initializer import orthogonal_init
+from ugv_swarm_expert.constants import DISCRIMINATOR_FEATURE_COUNT
+from ugv_swarm_expert.models.weight_initializer import orthogonal_init
 
-AGENT_STATE_ACTION_DIM = 43
+AGENT_STATE_ACTION_DIM: int = DISCRIMINATOR_FEATURE_COUNT
 LOCAL_EMBED_DIM = 64
 ATTENTION_HEADS = 4
 

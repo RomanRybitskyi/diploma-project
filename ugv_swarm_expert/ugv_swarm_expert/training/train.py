@@ -5,16 +5,18 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from ugv_swarm_expert.actor_network import ActorNetwork
-from ugv_swarm_expert.discriminator_network import DiscriminatorNetwork
-from ugv_swarm_expert.gail_reward import compute_gail_reward
-from ugv_swarm_expert.rollout_buffer import PPORolloutBuffer
-from ugv_swarm_expert.trainer import MAGAILTrainer
-from ugv_swarm_expert.weight_initializer import orthogonal_init
+from ugv_swarm_expert.constants import ACTION_DIM, STATE_FEATURE_COUNT, STATE_WINDOW_SIZE
+from ugv_swarm_expert.models.actor_network import ActorNetwork
+from ugv_swarm_expert.models.critic_network import CriticNetwork
+from ugv_swarm_expert.models.discriminator_network import DiscriminatorNetwork
+from ugv_swarm_expert.training.gail_reward import compute_gail_reward
+from ugv_swarm_expert.training.rollout_buffer import PPORolloutBuffer
+from ugv_swarm_expert.training.trainer import MAGAILTrainer
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -23,37 +25,12 @@ except Exception:
 
 
 LOGGER = logging.getLogger(__name__)
-STATE_SHAPE = (4, 41)
-ACTION_DIM = 2
-
-
-class CriticNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.value_net = nn.Sequential(
-            nn.Flatten(start_dim=1),
-            nn.Linear(4 * 41, 256),
-            nn.LayerNorm(256),
-            nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.LayerNorm(128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.LayerNorm(64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
-        )
-        orthogonal_init(self)
-
-    def forward(self, states: torch.Tensor) -> torch.Tensor:
-        if states.ndim != 3 or tuple(states.shape[1:]) != STATE_SHAPE:
-            raise ValueError(f"Critic input must have shape (Batch, 4, 41); got {tuple(states.shape)}.")
-        return self.value_net(states).squeeze(-1)
+STATE_SHAPE = (STATE_WINDOW_SIZE, STATE_FEATURE_COUNT)
 
 
 class ExpertTensorDataset(Dataset):
     def __init__(self, path, device="cpu"):
-        payload = torch.load(Path(path).expanduser(), map_location=device)
+        payload = torch.load(Path(path).expanduser(), map_location=device, weights_only=True)
         if "states" not in payload or "actions" not in payload:
             raise KeyError("Expert tensor file must contain 'states' and 'actions'.")
         self.states = torch.as_tensor(payload["states"], dtype=torch.float32, device=device)
@@ -126,7 +103,7 @@ def main(argv=None) -> None:
     )
     LOGGER.info("Using device: %s", device)
 
-    from ugv_swarm_expert.UGVSwarmEnv import UGVSwarmEnv
+    from ugv_swarm_expert.env.ugv_swarm_env import UGVSwarmEnv
 
     env = UGVSwarmEnv(num_agents=args.num_agents, device=device)
     writer = SummaryWriter(args.log_dir) if SummaryWriter is not None else NullSummaryWriter()
@@ -186,7 +163,7 @@ def main(argv=None) -> None:
                     done=torch.as_tensor(dones, dtype=torch.float32, device=device),
                 )
                 rollout_infos.append(info)
-                states = next_states.to(device)
+                states = env.reset().to(device) if np.any(dones) else next_states.to(device)
 
             final_state_frames = buffer.states[:, :, -1, :]
             gail_rewards = compute_gail_reward(
